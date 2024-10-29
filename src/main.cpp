@@ -5,13 +5,15 @@
 MPU6050 mpu6050(Wire);
 
 // Motor Control
-#define enA 3
+#define enA 9
 #define in1 4
-#define in2 5
+#define in2 7
 
-#define enB 12
-#define in3 10
-#define in4 11
+#define enB 10
+#define in3 12
+#define in4 13
+
+#define standbypin 8
 
 // For PID Controller 
 float Kp = 1;             // (P)roportional Tuning Parameter
@@ -26,6 +28,15 @@ void MotorDriver(int PIDValue);
 int PID();
 
 void setup() {
+  // Pin definitions
+  pinMode(standbypin, OUTPUT);
+  pinMode(enA, OUTPUT);
+  pinMode(enB, OUTPUT);
+  pinMode(in1, OUTPUT);
+  pinMode(in2, OUTPUT);
+  pinMode(in3, OUTPUT);
+  pinMode(in4, OUTPUT);
+
   Serial.begin(9600);
   Wire.begin();
   mpu6050.begin();
@@ -33,8 +44,10 @@ void setup() {
 }
 
 void loop() {
+  digitalWrite(standbypin, HIGH);
   mpu6050.update();
-
+  Serial.println(mpu6050.getAngleX());
+  Serial.println(PID());
   MotorDriver(PID());
 }
 
