@@ -16,11 +16,13 @@ MPU6050 mpu6050(Wire);
 #define standbypin 8
 
 // For PID Controller 
-float Kp = 24;             // (P)roportional Tuning Parameter
-float Ki = 3;             // (I)ntegral Tuning Parameter        
-float Kd = 15;             // (D)erivative Tuning Parameter
-float targetAngle = -1.5;  // Can be adjusted according to centre of gravity 
-float time, currentTime, previousTime;
+float setPoint = -2;
+float error, angleZ, currentTime, elapsedTime, previousTime;
+float lastError, rateError, cumError;
+float output = -1.5;
+float Kp = 22.0 ;
+float Kd = 18 ;
+float Ki = 0.05;
 
 float lastpitch = 0;          // Keeps track of error over time
 float iTerm;              // Used to accumulate error (integral)
@@ -75,26 +77,26 @@ void MotorDriver(int PIDValue){
 
 int PID(){
   currentTime = millis();
+  elapsedTime = (double)(currentTime - previousTime);
+
   // Calculate pitch
   float pitch = mpu6050.getAngleX();
   
   // Calculate Error
-  float error = targetAngle - pitch;
-  if (abs(error) <= 1.5) error = 0;
-
-  // Calculate PID terms
-  float pTerm = Kp * error;
-  time = currentTime - previousTime;
-  iTerm += Ki * error * time;
-  float dTerm = Kd * (pitch - lastpitch) / time;
-  lastpitch = pitch;
+  error = setPoint - pitch;
+  cumError = cumError + error*elapsedTime;
+  rateError = (error - lastError)/elapsedTime;
+  if (abs(error) <= 05) error = 0;
 
   // Obtain PID output value
-  float PIDValue = pTerm + iTerm + dTerm;
+  output = 0 + Kp*error + Ki*cumError + Kd*rateError;
+
+  lastError = error;
+  previousTime = currentTime;
 
   // Cap values so be able to send the correct PWM signal to the motors
-  if (PIDValue > 255) PIDValue = 255;
-  else if (PIDValue < -255) PIDValue = -255;
+  if (output > 255) output = 255;
+  else if (output < -255) output = -255;
   previousTime = millis();
-  return int(PIDValue);
+  return int(output);
 }
