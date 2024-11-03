@@ -18,13 +18,15 @@ MPU6050 mpu6050(Wire);
 
 #define standbypin 8
 
+#define margin 0.1
+
 // For PID Controller 
-float setPoint = -1.6;
+float setPoint = -1.55; // Robot specific
 float error, angleZ, currentTime, elapsedTime, previousTime;
 float lastError, rateError, cumError;
 float output = 0;
-float Kp = 26.0 ;
-float Kd = 0 ;
+float Kp = 26.0 ; // Tuned
+float Kd = 0.01 ;
 float Ki = 0;
 
 float lastpitch = 0;      
@@ -34,7 +36,6 @@ void MotorDriver(int PIDValue);
 int PID();
 
 void setup() {
-  // Pin definitions
   pinMode(standbypin, OUTPUT);
   pinMode(enA, OUTPUT);
   pinMode(enB, OUTPUT);
@@ -52,9 +53,6 @@ void setup() {
 void loop() {
   digitalWrite(standbypin, HIGH);
   mpu6050.update();
-  // Serial.print("Angle X");
-  // Serial.println(mpu6050.getAngleX());
-  // Serial.println(PID());
   MotorDriver(PID());
 }
 
@@ -83,30 +81,18 @@ int PID(){
   currentTime = millis();
   elapsedTime = (double)(currentTime - previousTime)/1000;
 
-  // Calculate pitch
   float pitch = mpu6050.getAngleX();
   
-  // Calculate Error
-  error = setPoint - pitch;  
-  // Serial.print("Error: ");
-  // Serial.println(error);
-  if (abs(error) <= 0.25) error = 0;
+  error = setPoint - pitch;
+  if (abs(error) <= margin) error = 0;
   cumError = cumError + error*elapsedTime;
   rateError = (error - lastError)/elapsedTime;
 
-  // Serial.print("KP - KI - KD:  ");
-  // Serial.print(Kp*error);
-  // Serial.print("--");
-  // Serial.print(Ki*cumError);
-  // Serial.print("--");
-  // Serial.println(Kd*rateError);
-  // Obtain PID output value
   output = 0 + Kp*error + Ki*cumError + Kd*rateError;
 
   lastError = error;
   previousTime = currentTime;
 
-  // Cap values so be able to send the correct PWM signal to the motors
   if (output > 255) output = 255;
   else if (output < -255) output = -255;
 
