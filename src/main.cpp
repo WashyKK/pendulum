@@ -6,23 +6,29 @@ MPU6050 mpu6050(Wire);
 
 // Motor Control
 #define enA 9
-#define in1 4
+#define in1 6
 #define in2 7
 
 #define enB 10
 #define in3 12
 #define in4 13
 
+#define m1a 4
+#define m2a 2
+
 #define standbypin 8
 
 // For PID Controller 
-float Kp = 1;             // (P)roportional Tuning Parameter
-float Ki = 2;             // (I)ntegral Tuning Parameter        
-float Kd = 3;             // (D)erivative Tuning Parameter
-float targetAngle = 0;  // Can be adjusted according to centre of gravity 
+float setPoint = -1.6;
+float error, angleZ, currentTime, elapsedTime, previousTime;
+float lastError, rateError, cumError;
+float output = 0;
+float Kp = 26.0 ;
+float Kd = 0 ;
+float Ki = 0;
 
-float lastpitch = 0;          // Keeps track of error over time
-float iTerm;              // Used to accumulate error (integral)
+float lastpitch = 0;      
+float iTerm;              
 
 void MotorDriver(int PIDValue);
 int PID();
@@ -40,14 +46,15 @@ void setup() {
   Serial.begin(9600);
   Wire.begin();
   mpu6050.begin();
-  mpu6050.calcGyroOffsets(true);
+  mpu6050.calcGyroOffsets(false,0,0);
 }
 
 void loop() {
   digitalWrite(standbypin, HIGH);
   mpu6050.update();
-  Serial.println(mpu6050.getAngleX());
-  Serial.println(PID());
+  // Serial.print("Angle X");
+  // Serial.println(mpu6050.getAngleX());
+  // Serial.println(PID());
   MotorDriver(PID());
 }
 
@@ -73,24 +80,36 @@ void MotorDriver(int PIDValue){
 }
 
 int PID(){
+  currentTime = millis();
+  elapsedTime = (double)(currentTime - previousTime)/1000;
+
   // Calculate pitch
   float pitch = mpu6050.getAngleX();
   
   // Calculate Error
-  float error = targetAngle - pitch;
+  error = setPoint - pitch;  
+  // Serial.print("Error: ");
+  // Serial.println(error);
+  if (abs(error) <= 0.25) error = 0;
+  cumError = cumError + error*elapsedTime;
+  rateError = (error - lastError)/elapsedTime;
 
-  // Calculate PID terms
-  float pTerm = Kp * error;
-  iTerm += Ki * error * 10;
-  float dTerm = Kd * (pitch - lastpitch) / 10;
-  lastpitch = pitch;
-
+  // Serial.print("KP - KI - KD:  ");
+  // Serial.print(Kp*error);
+  // Serial.print("--");
+  // Serial.print(Ki*cumError);
+  // Serial.print("--");
+  // Serial.println(Kd*rateError);
   // Obtain PID output value
-  float PIDValue = pTerm + iTerm - dTerm;
+  output = 0 + Kp*error + Ki*cumError + Kd*rateError;
+
+  lastError = error;
+  previousTime = currentTime;
 
   // Cap values so be able to send the correct PWM signal to the motors
-  if (PIDValue > 255) PIDValue = 255;
-  else if (PIDValue < -255) PIDValue = -255;
-  
-  return int(PIDValue);
+  if (output > 255) output = 255;
+  else if (output < -255) output = -255;
+
+  previousTime = millis();
+  return int(output);
 }
