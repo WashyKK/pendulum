@@ -21,13 +21,13 @@ MPU6050 mpu6050(Wire);
 #define margin 0.1
 
 // For PID Controller 
-float setPoint = -1.55; // Robot specific
+float setPoint = -1.58; // Robot specific
 float error, angleZ, currentTime, elapsedTime, previousTime;
 float lastError, rateError, cumError;
 float output = 0;
 float Kp = 26.0 ; // Tuned
-float Kd = 0.01 ;
-float Ki = 0;
+float Kd = 0.005 ;
+float Ki = 0.0001;
 
 float lastpitch = 0;      
 float iTerm;              
