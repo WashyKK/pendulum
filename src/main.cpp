@@ -13,19 +13,22 @@ MPU6050 mpu6050(Wire);
 #define in3 12
 #define in4 13
 
+#define m1a 4
+#define m2a 2
+
 #define standbypin 8
 
 // For PID Controller 
-float setPoint = -2;
+float setPoint = -1.6;
 float error, angleZ, currentTime, elapsedTime, previousTime;
 float lastError, rateError, cumError;
-float output = -1.5;
-float Kp = 22.0 ;
-float Kd = 18 ;
-float Ki = 0.05;
+float output = 0;
+float Kp = 26.0 ;
+float Kd = 0 ;
+float Ki = 0;
 
-float lastpitch = 0;          // Keeps track of error over time
-float iTerm;              // Used to accumulate error (integral)
+float lastpitch = 0;      
+float iTerm;              
 
 void MotorDriver(int PIDValue);
 int PID();
@@ -43,14 +46,15 @@ void setup() {
   Serial.begin(9600);
   Wire.begin();
   mpu6050.begin();
-  mpu6050.calcGyroOffsets(true);
+  mpu6050.calcGyroOffsets(false,0,0);
 }
 
 void loop() {
   digitalWrite(standbypin, HIGH);
   mpu6050.update();
-  Serial.println(mpu6050.getAngleX());
-  Serial.println(PID());
+  // Serial.print("Angle X");
+  // Serial.println(mpu6050.getAngleX());
+  // Serial.println(PID());
   MotorDriver(PID());
 }
 
@@ -77,17 +81,25 @@ void MotorDriver(int PIDValue){
 
 int PID(){
   currentTime = millis();
-  elapsedTime = (double)(currentTime - previousTime);
+  elapsedTime = (double)(currentTime - previousTime)/1000;
 
   // Calculate pitch
   float pitch = mpu6050.getAngleX();
   
   // Calculate Error
-  error = setPoint - pitch;
+  error = setPoint - pitch;  
+  // Serial.print("Error: ");
+  // Serial.println(error);
+  if (abs(error) <= 0.25) error = 0;
   cumError = cumError + error*elapsedTime;
   rateError = (error - lastError)/elapsedTime;
-  if (abs(error) <= 05) error = 0;
 
+  // Serial.print("KP - KI - KD:  ");
+  // Serial.print(Kp*error);
+  // Serial.print("--");
+  // Serial.print(Ki*cumError);
+  // Serial.print("--");
+  // Serial.println(Kd*rateError);
   // Obtain PID output value
   output = 0 + Kp*error + Ki*cumError + Kd*rateError;
 
@@ -97,6 +109,7 @@ int PID(){
   // Cap values so be able to send the correct PWM signal to the motors
   if (output > 255) output = 255;
   else if (output < -255) output = -255;
+
   previousTime = millis();
   return int(output);
 }
